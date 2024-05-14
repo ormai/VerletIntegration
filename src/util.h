@@ -4,16 +4,16 @@
 
 #include "stddef.h"
 
-char* readFile(const char* filename);
+char *readFile(const char *filename);
 
 typedef struct {
-    float* array;
-    size_t size;
-    size_t capacity;
+  float *array;
+  size_t size;
+  size_t capacity;
 } DynamicArray;
 
-void initialize(DynamicArray* dynArray, size_t initialCapacity);
-void push(DynamicArray* dynArray, float value);
-void cleanup(DynamicArray* dynArray);
+void initialize(DynamicArray *dynArray, size_t initialCapacity);
+void push(DynamicArray *dynArray, float value);
+void cleanup(DynamicArray *dynArray);
 
 #endif

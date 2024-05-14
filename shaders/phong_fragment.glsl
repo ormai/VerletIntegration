@@ -8,25 +8,23 @@ out vec4 color;
 
 uniform sampler2D imageTexture;
 
-void main()
-{
-    vec3 lightColor = vec3(1.0, 1.0, 1.0);
-    vec3 lightPos = vec3(10.0, 10.0, 10.0);
-    vec3 objectColor = vec3(0.6, 0.3, 0.7);
+void main() {
+  vec3 lightColor = vec3(1.0, 1.0, 1.0);
+  vec3 lightPos = vec3(10.0, 10.0, 10.0);
+  vec3 objectColor = vec3(0.6, 0.3, 0.7);
 
-    // ambient
-    float ambientStrength = 0.3;
-    vec3 ambient = ambientStrength * lightColor;
+  // ambient
+  float ambientStrength = 0.3;
+  vec3 ambient = ambientStrength * lightColor;
 
-    // diffuse
-    vec3 norm = normalize(fragmentVertexNormal);
-    vec3 lightDir = normalize(lightPos - fragmentPos);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor;
+  // diffuse
+  vec3 norm = normalize(fragmentVertexNormal);
+  vec3 lightDir = normalize(lightPos - fragmentPos);
+  float diff = max(dot(norm, lightDir), 0.0);
+  vec3 diffuse = diff * lightColor;
 
+  vec3 result = (ambient + diffuse) * objectColor;
 
-    vec3 result = (ambient + diffuse) * objectColor;
-
-    color = vec4(result, 1.0);
-    // color = texture(imageTexture, fragmentTexCoord);
+  color = vec4(result, 1.0);
+  // color = texture(imageTexture, fragmentTexCoord);
 }
