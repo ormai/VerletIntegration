@@ -17,6 +17,6 @@ typedef struct {
 
 Camera *createCamera(mfloat_t *position);
 void updateVectors(Camera *camera);
-mfloat_t *createViewMatrix(mfloat_t *viewMatrix, Camera *camera);
+void createViewMatrix(mfloat_t *viewMatrix, Camera *camera);
 
 #endif

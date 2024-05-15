@@ -1,5 +1,6 @@
-#include "camera.h"
 #include <stdlib.h>
+
+#include "camera.h"
 
 Camera *createCamera(mfloat_t *position) {
   Camera *camera = malloc(sizeof(Camera));
@@ -22,10 +23,9 @@ void updateVectors(Camera *camera) {
   vec3_normalize(camera->up, camera->up);
 }
 
-mfloat_t *createViewMatrix(mfloat_t *viewMatrix, Camera *camera) {
+void createViewMatrix(mfloat_t *viewMatrix, Camera *camera) {
   updateVectors(camera);
   mfloat_t target[VEC3_SIZE];
   vec3_add(target, camera->position, camera->forwards);
   mat4_look_at(viewMatrix, camera->position, target, camera->up);
-  return viewMatrix;
 }

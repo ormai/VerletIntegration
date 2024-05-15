@@ -1,23 +1,23 @@
-#include "shader.h"
-#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "dependencies/include/GL/glew.h"
 
-unsigned int createShader(const char *vertexFile, const char *fragmentFile) {
+#include "shader.h"
+#include "util.h"
 
+unsigned createShader(const char *vertexFile, const char *fragmentFile) {
   GLint success = 0;
   GLint logSize = 0;
 
   // Create a shader object and compile it during runtime
-  unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+  const unsigned vertexShader = glCreateShader(GL_VERTEX_SHADER);
   const char *vertexShaderSource = readFile(vertexFile);
   glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
   glCompileShader(vertexShader);
 
   glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-  if (success == GL_FALSE) {
+  if (!success) {
     glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &logSize);
     GLchar infoLog[logSize];
     glGetShaderInfoLog(vertexShader, logSize, &logSize, infoLog);
@@ -26,14 +26,13 @@ unsigned int createShader(const char *vertexFile, const char *fragmentFile) {
   }
 
   // Perform the same steps for the fragment shader
-  unsigned int fragmentShader;
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+  const unsigned fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
   const char *fragmentShaderSource = readFile(fragmentFile);
   glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
   glCompileShader(fragmentShader);
 
   glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-  if (success == GL_FALSE) {
+  if (!success) {
     glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &logSize);
     GLchar infoLog[logSize];
     glGetShaderInfoLog(fragmentShader, logSize, &logSize, infoLog);
@@ -42,7 +41,7 @@ unsigned int createShader(const char *vertexFile, const char *fragmentFile) {
   }
 
   // Create a shader program and link the two shader steps together
-  unsigned int shaderProgram = glCreateProgram();
+  const unsigned shaderProgram = glCreateProgram();
   glAttachShader(shaderProgram, vertexShader);
   glAttachShader(shaderProgram, fragmentShader);
   glLinkProgram(shaderProgram);
@@ -55,6 +54,7 @@ unsigned int createShader(const char *vertexFile, const char *fragmentFile) {
   return shaderProgram;
 }
 
-void detachShader() { glUseProgram(0); }
+void detachShader() { glUseProgram(0); } // never used
 
-void destroyShader(unsigned int shaderID) { glDeleteProgram(shaderID); }
+// never used
+void destroyShader(unsigned shaderID) { glDeleteProgram(shaderID); }

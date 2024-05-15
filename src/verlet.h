@@ -1,5 +1,3 @@
-
-
 #ifndef __VERLET_H__
 #define __VERLET_H__
 
@@ -34,4 +32,4 @@ void applyGridCollisions(VerletObject *objects, int size);
 void addForce(VerletObject *objects, int size, mfloat_t *center,
               float strength);
 
-#endif
+#endif // __VERLET_H__

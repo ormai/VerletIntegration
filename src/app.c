@@ -20,29 +20,115 @@
 #define TARGET_FPS 60
 #define NUM_SUBSTEPS 8
 
-// Function prototypes
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void cursor_enter_callback(GLFWwindow *window, int entered);
-void processInput(GLFWwindow *window);
-void updateCamera(GLFWwindow *window, Mouse *mouse, Camera *camera);
-void instantiateVerlets(VerletObject *objects, int size);
+struct {
+  bool cursorEntered;
+  Camera *camera;
+  float cameraRadius;
+  int totalFrames;
+} state = {false, NULL, 24, 0};
 
-// Settings
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+// process all input: query GLFW whether relevant keys are pressed/released this
+// frame and react accordingly
 
-// Global variables (replacing soon with State struct)
-bool cursorEntered = false;
-Camera *camera;
-float cameraRadius = 24.0f;
-int totalFrames = 0;
+static void updateCamera(GLFWwindow *window, Mouse *mouse, Camera *camera) {
+  const float speed = 0.08f;
+  mfloat_t temp[VEC3_SIZE];
 
-int main() {
-  GLFWwindow *window;
+  const float universalAngle = state.totalFrames / 4.;
+  vec3(camera->position, MCOS(MRADIANS(universalAngle)) * state.cameraRadius,
+       camera->position[1],
+       MSIN(MRADIANS(universalAngle)) * state.cameraRadius);
+  camera->yaw = universalAngle + 180.;
 
-  /* Initialize the library */
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    vec3_add(camera->position, camera->position,
+             vec3_multiply_f(temp, camera->up, speed));
+    camera->pitch -= .22;
+    state.cameraRadius -= .01;
+  }
+
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    vec3_subtract(camera->position, camera->position,
+                  vec3_multiply_f(temp, camera->up, speed));
+    camera->pitch += .22;
+    state.cameraRadius += .01;
+  }
+
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    vec3_add(camera->position, camera->position,
+             vec3_multiply_f(temp, camera->up, speed));
+
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    vec3_subtract(camera->position, camera->position,
+                  vec3_multiply_f(temp, camera->up, speed));
+
+  // // Mouse Movement
+  if (state.cursorEntered) {
+    double dx = .1 * getDx(mouse);
+    double dy = .1 * getDy(mouse);
+    camera->yaw += dx;
+
+    camera->pitch -= dy;
+    if (camera->pitch > 89.)
+      camera->pitch = 89.;
+    if (camera->pitch < -89.)
+      camera->pitch = -89.;
+  }
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback
+// function executes
+static void framebuffer_size_callback(GLFWwindow *window, int width,
+                                      int height) {
+  // make sure the viewport matches the new window dimensions; note that width
+  // and height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
+}
+
+static void cursor_enter_callback(GLFWwindow *window, int entered) {
+  if (entered) {
+    // The cursor entered the content area of the window
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    state.cursorEntered = true;
+  } else {
+    // The cursor left the content area of the window
+  }
+}
+
+static void instantiateVerlets(VerletObject *objects, int size) {
+  const float distance = 7;
+  for (int i = 0; i < size; i++) {
+
+    // ====== LOOP ======
+    float x = MSIN(i) * distance;
+    float z = MCOS(i) * distance;
+    float xp = MSIN(i) * distance * .999;
+    float zp = MCOS(i) * distance * .999;
+    float y = rand() % (2 - 1 + 1) + 1;
+
+    VerletObject *obj = &objects[i];
+    vec3(obj->current, x, y, z);
+    vec3(obj->previous, xp, y, zp);
+    vec3(obj->acceleration, 0, 0, 0);
+    obj->radius = VERLET_RADIUS;
+
+    // ====== STREAM ======
+    /*float x = (0 + i) % (int)distance - distance / 2;*/
+    /*float y = -2.0f;*/
+    /*float z = -4.0f;*/
+    /*float xp = x * 1.005;*/
+    /*float yp = y * 1.002;*/
+    /*float zp = z * 1.005;*/
+    /*vec3(obj->current, x, y, z);*/
+    /*vec3(obj->previous, xp, yp, zp);*/
+    /*vec3(obj->acceleration, 0, 0, 0);*/
+    /*obj->radius = VERLET_RADIUS;*/
+  }
+}
+
+int main(void) {
   if (!glfwInit())
-    return -1;
+    return EXIT_FAILURE;
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -53,11 +139,11 @@ int main() {
 #endif
 
   /* Create a windowed mode window and its OpenGL context */
-  window =
-      glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Verlet Integration", NULL, NULL);
+  GLFWwindow *window =
+      glfwCreateWindow(1280, 720, "Verlet Integration", NULL, NULL);
   if (!window) {
     glfwTerminate();
-    return -1;
+    return EXIT_FAILURE;
   }
 
   /* Make the window's context current */
@@ -74,7 +160,7 @@ int main() {
   glewInit();
 
   /* OpenGL Settings */
-  glClearColor(0.1, 0.1, 0.1, 1.0);
+  glClearColor(.1, .1, .1, 1.);
   glClearStencil(0);
 
   glEnable(GL_DEPTH_TEST);
@@ -87,14 +173,14 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  glPointSize(3.0);
+  glPointSize(3.);
 
   /* Models & Shaders */
-  unsigned int phongShader =
+  unsigned phongShader =
       createShader("shaders/phong_vertex.glsl", "shaders/phong_fragment.glsl");
-  unsigned int instanceShader = createShader("shaders/instance_vertex.glsl",
-                                             "shaders/instance_fragment.glsl");
-  unsigned int baseShader =
+  unsigned instanceShader = createShader("shaders/instance_vertex.glsl",
+                                         "shaders/instance_fragment.glsl");
+  unsigned baseShader =
       createShader("shaders/base_vertex.glsl", "shaders/base_fragment.glsl");
 
   Mesh *mesh = createMesh("models/sphere.obj", true);
@@ -111,11 +197,11 @@ int main() {
   int numActive = 0;
 
   mfloat_t view[MAT4_SIZE];
-  camera = createCamera((mfloat_t[]){0, 0, cameraRadius});
+  state.camera = createCamera((mfloat_t[]){0, 0, state.cameraRadius});
 
   Mouse *mouse = createMouse();
 
-  float dt = 0.000001f;
+  float dt = .000001;
   float lastFrameTime = (float)glfwGetTime();
 
   char title[100] = "";
@@ -126,16 +212,17 @@ int main() {
   while (!glfwWindowShouldClose(window)) {
     /* Input */
     updateMouse(window, mouse);
-    processInput(window);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+      glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {
+    // extert center force
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
       addForce(verlets, numActive, (mfloat_t[]){0, 3, 0},
-               -30.0f * NUM_SUBSTEPS);
-    }
+               -30. * NUM_SUBSTEPS);
 
     /* Camera */
-    updateCamera(window, mouse, camera);
-    createViewMatrix(view, camera);
+    updateCamera(window, mouse, state.camera);
+    createViewMatrix(view, state.camera);
 
     /* Shader Uniforms */
     glUseProgram(phongShader);
@@ -160,23 +247,19 @@ int main() {
       numActive += ADDITION_SPEED;
     }
 
-    if (totalFrames % 60 == 0) {
-      sprintf(title, "FPS : %-4.0f | Balls : %-10d", 1.0 / dt, numActive);
+    if (state.totalFrames % 60 == 0) {
+      sprintf(title, "FPS : %-4.0f | Balls : %-10d", 1. / dt, numActive);
       glfwSetWindowTitle(window, title);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-      containerPosition[0] -= 0.05f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-      containerPosition[0] += 0.05f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-      containerPosition[1] -= 0.05f;
-    }
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-      containerPosition[1] += 0.05f;
-    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+      containerPosition[0] -= .05;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+      containerPosition[0] += .05;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+      containerPosition[1] -= .05;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+      containerPosition[1] += .05;
 
     float sub_dt = dt / NUM_SUBSTEPS;
     for (int i = 0; i < NUM_SUBSTEPS; i++) {
@@ -193,11 +276,11 @@ int main() {
     int posPointer = 0;
     int velPointer = 0;
     for (int i = 0; i < numActive; i++) {
-      VerletObject obj = verlets[i];
-      verletPositions[posPointer++] = obj.current[0];
-      verletPositions[posPointer++] = obj.current[1];
-      verletPositions[posPointer++] = obj.current[2];
-      float vel = vec3_distance(obj.current, obj.previous) * 10;
+      VerletObject verlet = verlets[i];
+      verletPositions[posPointer++] = verlet.current[0];
+      verletPositions[posPointer++] = verlet.current[1];
+      verletPositions[posPointer++] = verlet.current[2];
+      float vel = vec3_distance(verlet.current, verlet.previous) * 10;
       verletVelocities[velPointer++] = vel;
     }
 
@@ -231,117 +314,13 @@ int main() {
 
     /* Timing */
     dt = (float)glfwGetTime() - lastFrameTime;
-    while (dt < 1.0f / TARGET_FPS) {
+    while (dt < 1. / TARGET_FPS) {
       dt = (float)glfwGetTime() - lastFrameTime;
     }
     lastFrameTime = (float)glfwGetTime();
-    totalFrames++;
+    state.totalFrames++;
   }
 
   glfwTerminate();
-  return 0;
-}
-
-// process all input: query GLFW whether relevant keys are pressed/released this
-// frame and react accordingly
-void processInput(GLFWwindow *window) {
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, true);
-}
-
-void updateCamera(GLFWwindow *window, Mouse *mouse, Camera *camera) {
-
-  float speed = 0.08f;
-  mfloat_t temp[VEC3_SIZE];
-
-  float universalAngle = totalFrames / 4.0f;
-  vec3(camera->position, MCOS(MRADIANS(universalAngle)) * cameraRadius,
-       camera->position[1], MSIN(MRADIANS(universalAngle)) * cameraRadius);
-  camera->yaw = universalAngle + 180.0f;
-
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    vec3_add(camera->position, camera->position,
-             vec3_multiply_f(temp, camera->up, speed));
-    camera->pitch -= 0.22f;
-    cameraRadius -= 0.01f;
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    vec3_subtract(camera->position, camera->position,
-                  vec3_multiply_f(temp, camera->up, speed));
-    camera->pitch += 0.22f;
-    cameraRadius += 0.01f;
-  }
-
-  // if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-  //     vec3_add(camera->position, camera->position, vec3_multiply_f(temp,
-  //     camera->up, speed));
-
-  // if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-  //     vec3_subtract(camera->position, camera->position, vec3_multiply_f(temp,
-  //     camera->up, speed));
-
-  // // Mouse Movement
-  // if (cursorEntered) {
-
-  //     double dx = 0.1 * getDx(mouse);
-  //     double dy = 0.1 * getDy(mouse);
-  //     camera->yaw += dx;
-
-  //     camera->pitch -= dy;
-  //     if (camera->pitch > 89.0f) {
-  //         camera->pitch = 89.0f;
-  //     }
-  //     if (camera->pitch < -89.0f) {
-  //         camera->pitch = -89.0f;
-  //     }
-  // }
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback
-// function executes
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-  // make sure the viewport matches the new window dimensions; note that width
-  // and height will be significantly larger than specified on retina displays.
-  glViewport(0, 0, width, height);
-}
-
-void cursor_enter_callback(GLFWwindow *window, int entered) {
-  if (entered) {
-    // The cursor entered the content area of the window
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    cursorEntered = true;
-  } else {
-    // The cursor left the content area of the window
-  }
-}
-
-void instantiateVerlets(VerletObject *objects, int size) {
-  int distance = 7.0f;
-  for (int i = 0; i < size; i++) {
-    VerletObject *obj = &(objects[i]);
-
-    // ====== LOOP ======
-    float x = MSIN(i) * distance;
-    float z = MCOS(i) * distance;
-    float xp = MSIN(i) * distance * 0.999;
-    float zp = MCOS(i) * distance * 0.999;
-    float y = rand() % (2 - 1 + 1) + 1;
-    vec3(obj->current, x, y, z);
-    vec3(obj->previous, xp, y, zp);
-    vec3(obj->acceleration, 0, 0, 0);
-    obj->radius = VERLET_RADIUS;
-
-    // ====== STREAM ======
-    // float x = (0 + i) % distance - distance / 2;
-    // float y = -2.0f;
-    // float z = -4.0f;
-    // float xp = x * 1.005;
-    // float yp = y * 1.002;
-    // float zp = z * 1.005;
-    // vec3(obj->current, x, y, z);
-    // vec3(obj->previous, xp, yp, zp);
-    // vec3(obj->acceleration, 0, 0, 0);
-    // obj->radius = VERLET_RADIUS;
-  }
+  return EXIT_SUCCESS;
 }

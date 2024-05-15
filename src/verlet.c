@@ -5,16 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GRAVITY -15.0f
+#define GRAVITY -15.
 #define THREAD_COUNT 8
 
 void applyForces(VerletObject *objects, int size) {
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
     objects[i].acceleration[1] += GRAVITY;
-  }
 }
 
-void handleCollision(VerletObject *a, VerletObject *b) {
+static void handleCollision(VerletObject *a, VerletObject *b) {
   mfloat_t axis[VEC3_SIZE];
   vec3_subtract(axis, a->current, b->current);
   mfloat_t dist = vec3_length(axis);
@@ -29,13 +28,10 @@ void handleCollision(VerletObject *a, VerletObject *b) {
 }
 
 void applyCollisions(VerletObject *objects, int size) {
-  for (int a = 0; a < size; a++) {
-    for (int b = 0; b < size; b++) {
-      if (a != b) {
+  for (int a = 0; a < size; a++)
+    for (int b = 0; b < size; b++)
+      if (a != b)
         handleCollision(&objects[a], &objects[b]);
-      }
-    }
-  }
 }
 
 #define DIMENSION 58 // CONTAINER_RADIUS / VERLET_RADIUS + 5
